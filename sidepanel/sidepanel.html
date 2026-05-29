@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cue</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:          #0d0c0a;
+      --bg-2:        #141209;
+      --surface:     #1a1711;
+      --surface-2:   #221e16;
+      --line:        rgba(245, 235, 215, 0.09);
+      --line-soft:   rgba(245, 235, 215, 0.05);
+      --ink:         #f6f1e6;
+      --ink-dim:     #b9b1a1;
+      --ink-faint:   #7e776a;
+      --signal:      #ffb454;
+      --signal-deep: #e8911f;
+      --signal-glow: rgba(255, 180, 84, 0.18);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Hanken Grotesk', -apple-system, sans-serif;
+      font-size: 13px;
+      background: var(--bg);
+      color: var(--ink);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* ── Warm glow ──────────────────────────────────── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: radial-gradient(300px 200px at 100% 0%, var(--signal-glow), transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    body > * { position: relative; z-index: 1; }
+
+    /* ── Header ─────────────────────────────────────── */
+    #header {
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px 8px;
+      border-bottom: 1px solid var(--line);
+    }
+    #header-wordmark {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    #pulse-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--signal);
+      animation: pulse 2.2s ease-out infinite;
+      flex-shrink: 0;
+    }
+    @keyframes pulse {
+      0%   { box-shadow: 0 0 0 0 rgba(255, 180, 84, 0.45); }
+      70%  { box-shadow: 0 0 0 8px rgba(255, 180, 84, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(255, 180, 84, 0); }
+    }
+    #header-title {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: 0.18em;
+      color: var(--ink);
+      text-transform: uppercase;
+    }
+    #open-options {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      color: var(--ink-faint);
+      letter-spacing: 0.06em;
+      cursor: pointer;
+      background: none;
+      border: none;
+      padding: 2px 4px;
+      transition: color 0.15s;
+    }
+    #open-options:hover { color: var(--signal); }
+
+    /* ── Live badge ─────────────────────────────────── */
+    #live-badge {
+      display: none;
+      align-items: center;
+      gap: 5px;
+      background: rgba(255, 180, 84, 0.1);
+      border: 1px solid rgba(255, 180, 84, 0.25);
+      border-radius: 20px;
+      padding: 2px 7px 2px 5px;
+    }
+    #live-badge.visible { display: flex; }
+    #live-dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--signal);
+      animation: live-flash 1.4s ease-in-out infinite;
+      flex-shrink: 0;
+    }
+    @keyframes live-flash {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.25; }
+    }
+    #live-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 8px;
+      font-weight: 500;
+      letter-spacing: 0.12em;
+      color: var(--signal);
+      text-transform: uppercase;
+    }
+
+    /* ── Zone 1: call context ───────────────────────── */
+    #zone-context {
+      flex-shrink: 0;
+      padding: 10px 14px 8px;
+      border-bottom: 1px solid var(--line);
+    }
+    #zone-context label {
+      display: block;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 9px;
+      letter-spacing: 0.1em;
+      color: var(--ink-faint);
+      text-transform: uppercase;
+      margin-bottom: 5px;
+    }
+    #context-input {
+      width: 100%;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      color: var(--ink);
+      font-family: 'Hanken Grotesk', sans-serif;
+      font-size: 12px;
+      padding: 6px 9px;
+      resize: none;
+      min-height: 46px;
+      max-height: 80px;
+      line-height: 1.5;
+      transition: border-color 0.15s;
+    }
+    #context-input::placeholder { color: var(--ink-faint); }
+    #context-input:focus {
+      outline: none;
+      border-color: rgba(255, 180, 84, 0.4);
+    }
+
+    /* ── Zone 2: suggestion cards ───────────────────── */
+    #zone-cards {
+      flex: 1;
+      overflow-y: auto;
+      padding: 10px 14px 0;
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+      min-height: 0;
+    }
+    #zone-cards::-webkit-scrollbar { width: 3px; }
+    #zone-cards::-webkit-scrollbar-track { background: transparent; }
+    #zone-cards::-webkit-scrollbar-thumb { background: var(--line); border-radius: 2px; }
+
+    .card {
+      background: var(--surface-2);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px 12px;
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+      user-select: none;
+    }
+    .card:hover { border-color: rgba(255, 180, 84, 0.35); background: #272118; }
+    .card-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--ink);
+      margin-bottom: 3px;
+    }
+    .card-sublabel {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 9px;
+      color: var(--signal);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+    .card-answer {
+      display: none;
+      margin-top: 9px;
+      padding-top: 9px;
+      border-top: 1px solid var(--line);
+      font-size: 12px;
+      color: var(--ink-dim);
+      line-height: 1.55;
+    }
+    .card.expanded .card-answer { display: block; }
+    .card.manual { border-left: 2px solid var(--signal); }
+
+    #status {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      text-align: center;
+      color: var(--ink-faint);
+      padding: 28px 0 0;
+      letter-spacing: 0.04em;
+    }
+
+    /* ── History feed ───────────────────────────────── */
+    #zone-history {
+      flex-shrink: 0;
+      height: 160px;
+      overflow-y: auto;
+      padding: 8px 14px;
+      border-top: 1px solid var(--line-soft);
+    }
+    #zone-history:empty { display: none; }
+    #zone-history::-webkit-scrollbar { width: 3px; }
+    #zone-history::-webkit-scrollbar-thumb { background: var(--line); border-radius: 2px; }
+
+    #history-separator {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    #history-separator span {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 9px;
+      color: var(--ink-faint);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      white-space: nowrap;
+      opacity: 0.6;
+    }
+    #history-separator::before,
+    #history-separator::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--line-soft);
+    }
+    .history-card {
+      border: 1px solid var(--line-soft);
+      border-radius: 7px;
+      padding: 7px 10px;
+      margin-bottom: 5px;
+      opacity: 0.5;
+    }
+    .history-card-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      font-weight: 500;
+      color: var(--ink-dim);
+      margin-bottom: 3px;
+      letter-spacing: 0.02em;
+    }
+    .history-card-answer {
+      font-size: 11px;
+      color: var(--ink-faint);
+      line-height: 1.4;
+    }
+
+    /* ── Quick-fire buttons ─────────────────────────── */
+    #quickfire-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      padding: 8px 14px 0;
+    }
+    .qf-btn {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      color: var(--ink-dim);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 0.03em;
+      padding: 4px 11px;
+      cursor: pointer;
+      transition: border-color 0.15s, color 0.15s;
+      white-space: nowrap;
+    }
+    .qf-btn:hover { border-color: var(--signal); color: var(--signal); }
+    .qf-btn.loading { opacity: 0.35; pointer-events: none; }
+
+    /* ── Zone 3: manual question ────────────────────── */
+    #zone-question {
+      flex-shrink: 0;
+      padding: 8px 14px 12px;
+      border-top: 1px solid var(--line);
+      display: flex;
+      gap: 6px;
+    }
+    #question-input {
+      flex: 1;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      color: var(--ink);
+      font-family: 'Hanken Grotesk', sans-serif;
+      font-size: 12px;
+      padding: 7px 9px;
+      transition: border-color 0.15s;
+    }
+    #question-input::placeholder { color: var(--ink-faint); }
+    #question-input:focus {
+      outline: none;
+      border-color: rgba(255, 180, 84, 0.4);
+    }
+    #question-submit {
+      background: var(--signal);
+      border: none;
+      border-radius: 6px;
+      color: #0d0c0a;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      padding: 7px 13px;
+      cursor: pointer;
+      transition: background 0.15s;
+      white-space: nowrap;
+    }
+    #question-submit:hover { background: var(--signal-deep); }
+    #question-submit:active { background: #d07e18; }
+  </style>
+</head>
+<body>
+
+  <div id="header">
+    <div id="header-wordmark">
+      <div id="pulse-dot"></div>
+      <span id="header-title">Cue</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <div id="live-badge">
+        <div id="live-dot"></div>
+        <span id="live-label">Live</span>
+      </div>
+      <button id="open-options">Settings</button>
+    </div>
+  </div>
+
+  <!-- Zone 1 -->
+  <div id="zone-context">
+    <label for="context-input">Call context</label>
+    <textarea id="context-input" placeholder="e.g. Series A investor call…"></textarea>
+  </div>
+
+  <!-- Zone 2 -->
+  <div id="zone-cards">
+    <div id="status">Waiting for captions…</div>
+  </div>
+
+  <!-- History -->
+  <div id="zone-history"></div>
+
+  <!-- Quick-fire -->
+  <div id="quickfire-row"></div>
+
+  <!-- Zone 3 -->
+  <div id="zone-question">
+    <input id="question-input" type="text" placeholder="Ask privately…">
+    <button id="question-submit">Ask</button>
+  </div>
+
+  <script src="sidepanel.js"></script>
+</body>
+</html>

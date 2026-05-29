@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Cue — Settings</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:          #0d0c0a;
+      --bg-2:        #141209;
+      --surface:     #1a1711;
+      --surface-2:   #221e16;
+      --line:        rgba(245, 235, 215, 0.09);
+      --line-soft:   rgba(245, 235, 215, 0.05);
+      --ink:         #f6f1e6;
+      --ink-dim:     #b9b1a1;
+      --ink-faint:   #7e776a;
+      --signal:      #ffb454;
+      --signal-deep: #e8911f;
+      --signal-glow: rgba(255, 180, 84, 0.18);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Hanken Grotesk', -apple-system, sans-serif;
+      font-size: 14px;
+      background: var(--bg);
+      color: var(--ink);
+      max-width: 660px;
+      margin: 48px auto;
+      padding: 0 24px 80px;
+      background-attachment: fixed;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: radial-gradient(400px 260px at 100% 0%, var(--signal-glow), transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    * { position: relative; z-index: 1; }
+
+    /* ── Header ─────────────────────────────────────── */
+    .page-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 40px;
+    }
+    .pulse-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--signal);
+      animation: pulse 2.2s ease-out infinite;
+      flex-shrink: 0;
+    }
+    @keyframes pulse {
+      0%   { box-shadow: 0 0 0 0 rgba(255, 180, 84, 0.45); }
+      70%  { box-shadow: 0 0 0 8px rgba(255, 180, 84, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(255, 180, 84, 0); }
+    }
+    h1 {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 14px;
+      font-weight: 500;
+      letter-spacing: 0.18em;
+      color: var(--ink);
+      text-transform: uppercase;
+    }
+    .page-subtitle {
+      font-size: 12px;
+      color: var(--ink-faint);
+      margin-left: auto;
+      font-family: 'JetBrains Mono', monospace;
+      letter-spacing: 0.04em;
+    }
+
+    /* ── Section titles ─────────────────────────────── */
+    .section-title {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 9px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--ink-faint);
+      margin: 32px 0 14px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    /* ── Fields ─────────────────────────────────────── */
+    .field { margin-bottom: 18px; }
+    label {
+      display: block;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 9px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--ink-faint);
+      margin-bottom: 6px;
+    }
+    .field-hint {
+      font-size: 11px;
+      color: var(--ink-faint);
+      margin-top: 5px;
+      line-height: 1.5;
+    }
+    input[type="text"],
+    input[type="url"],
+    input[type="number"],
+    input[type="password"] {
+      width: 100%;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      color: var(--ink);
+      font-family: 'Hanken Grotesk', sans-serif;
+      font-size: 13px;
+      padding: 9px 11px;
+      transition: border-color 0.15s;
+    }
+    input::placeholder { color: var(--ink-faint); }
+    input:focus, textarea:focus {
+      outline: none;
+      border-color: rgba(255, 180, 84, 0.4);
+    }
+    textarea {
+      width: 100%;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      color: var(--ink);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      padding: 9px 11px;
+      resize: vertical;
+      min-height: 80px;
+      line-height: 1.6;
+      transition: border-color 0.15s;
+    }
+    textarea::placeholder { color: var(--ink-faint); }
+    #wiki { min-height: 220px; }
+
+    /* ── Input row (URL + button) ───────────────────── */
+    .input-row {
+      display: flex;
+      gap: 8px;
+      align-items: flex-start;
+    }
+    .input-row input { flex: 1; }
+
+    /* ── Buttons ─────────────────────────────────────── */
+    .btn-primary {
+      background: var(--signal);
+      border: none;
+      border-radius: 6px;
+      color: #0d0c0a;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.06em;
+      padding: 10px 22px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .btn-primary:hover { background: var(--signal-deep); }
+    .btn-primary:active { background: #d07e18; }
+
+    .btn-secondary {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      color: var(--ink-dim);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 0.04em;
+      padding: 9px 14px;
+      cursor: pointer;
+      white-space: nowrap;
+      flex-shrink: 0;
+      transition: border-color 0.15s, color 0.15s;
+    }
+    .btn-secondary:hover { border-color: var(--signal); color: var(--signal); }
+
+    /* ── Wiki preview ───────────────────────────────── */
+    #wiki-preview {
+      display: none;
+      margin-top: 7px;
+      padding: 9px 11px;
+      background: var(--bg-2);
+      border: 1px solid var(--line-soft);
+      border-radius: 6px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: var(--ink-faint);
+      white-space: pre-wrap;
+      line-height: 1.5;
+    }
+    #wiki-fetch-status {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      color: var(--ink-faint);
+      margin-top: 5px;
+      letter-spacing: 0.03em;
+    }
+
+    /* ── Warning ────────────────────────────────────── */
+    .warning {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      color: var(--signal);
+      margin-top: 5px;
+      letter-spacing: 0.03em;
+    }
+
+    /* ── Save row ───────────────────────────────────── */
+    .actions {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-top: 28px;
+    }
+    #save-status {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: var(--signal);
+      letter-spacing: 0.04em;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="page-header">
+    <div class="pulse-dot"></div>
+    <h1>Cue</h1>
+    <span class="page-subtitle">Settings</span>
+  </div>
+
+  <div class="section-title">Identity</div>
+
+  <div class="field">
+    <label for="user-name">Your name</label>
+    <input id="user-name" type="text" placeholder="e.g. Charlie">
+    <p class="field-hint">Used to distinguish your speech from the other party's in captions.</p>
+  </div>
+
+  <div class="section-title">Trigger behaviour</div>
+
+  <div class="field">
+    <label for="debounce-ms">Trigger debounce (ms)</label>
+    <input id="debounce-ms" type="number" min="500" max="10000" step="500" placeholder="2500">
+    <p class="field-hint">How long to wait after speech stops before requesting suggestions. Default: 2500ms.</p>
+  </div>
+
+  <div class="section-title">Company knowledge</div>
+
+  <div class="field">
+    <label for="wiki-url">Wiki URL</label>
+    <div class="input-row">
+      <input id="wiki-url" type="url" placeholder="e.g. a raw GitHub Gist URL">
+      <button id="fetch-wiki" class="btn-secondary">Fetch & preview</button>
+    </div>
+    <div id="wiki-preview"></div>
+    <div id="wiki-fetch-status"></div>
+    <p class="field-hint">Must return plain text or Markdown. Public URLs only. Refreshed hourly.</p>
+  </div>
+
+  <div class="actions">
+    <button id="save" class="btn-primary">Save settings</button>
+    <span id="save-status"></span>
+  </div>
+
+  <script src="options.js"></script>
+</body>
+</html>
