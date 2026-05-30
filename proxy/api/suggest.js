@@ -148,10 +148,10 @@ async function handleQuickfire(wiki, res) {
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
         max_tokens: 256,
-        system: 'You extract quick-reference topics from a company knowledge base. Output ONLY valid JSON, no prose.',
+        system: 'You identify broad conversation topics from a company knowledge base. Output ONLY valid JSON, no prose.',
         messages: [{
           role: 'user',
-          content: `From the company knowledge below, identify the 5 most likely topics someone would be asked about in a sales or investor meeting. Return them as short button labels (2–4 words each).\n\nOutput format: {"buttons":["Label one","Label two","Label three","Label four","Label five"]}\n\n--- COMPANY KNOWLEDGE ---\n${wiki}`,
+          content: `From the company knowledge below, identify the 5 broadest subject areas an investor or client would ask about in a meeting. These should be high-level themes, not specific facts or metrics — think "Revenue model" not "£60k MRR", "Team background" not "Founded in 2021".\n\nReturn them as short button labels (2–4 words each).\n\nOutput format: {"buttons":["Label one","Label two","Label three","Label four","Label five"]}\n\n--- COMPANY KNOWLEDGE ---\n${wiki}`,
         }],
       }),
     });
