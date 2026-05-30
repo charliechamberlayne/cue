@@ -21,6 +21,12 @@ export default async function handler(req, res) {
     return handleQuickfire(wiki, res);
   }
 
+  // Quick-fire answers: pre-generate answers for a set of button labels
+  if (mode === 'quickfire-answers') {
+    const { buttons } = req.body ?? {};
+    return handleQuickfireAnswers(wiki, buttons ?? [], context ?? '', userName ?? 'the user', res);
+  }
+
   const systemPrompt = buildSystemPrompt(userName ?? 'the user', context ?? '', wiki);
   const userMessage = mode === 'manual'
     ? `${userName ?? 'The user'} typed this question to answer privately: ${query}`
@@ -75,6 +81,58 @@ export default async function handler(req, res) {
   }));
 
   return res.status(200).json({ cards });
+}
+
+async function handleQuickfireAnswers(wiki, buttons, context, userName, res) {
+  if (!buttons.length) return res.status(200).json({ answers: {} });
+
+  // Build one batched prompt so we make a single API call for all buttons
+  const labelsBlock = buttons.map((b, i) => `${i + 1}. ${b}`).join('\n');
+  const systemPrompt = buildSystemPrompt(userName, context, wiki);
+  const userMessage = `Pre-generate answers for these quick-reference buttons. For each button label, return a single answer card with the best answer from the company knowledge.
+
+Button labels:
+${labelsBlock}
+
+Output ONLY valid JSON:
+{"answers":{"<label>":{"label":"...","sublabel":"...","answer":"..."},...}}
+
+Every label must appear as a key. If there is no relevant info for a label, use answer: "No information available." with sublabel "N/A".`;
+
+  let raw;
+  try {
+    const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key':         process.env.ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
+        'content-type':      'application/json',
+      },
+      body: JSON.stringify({
+        model:      'claude-haiku-4-5-20251001',
+        max_tokens: 1024,
+        system:     systemPrompt,
+        messages:   [{ role: 'user', content: userMessage }],
+      }),
+    });
+    if (!anthropicRes.ok) {
+      const err = await anthropicRes.text();
+      return res.status(502).json({ error: 'Upstream API error', detail: err });
+    }
+    const data = await anthropicRes.json();
+    raw = data.content?.[0]?.text ?? '';
+  } catch (err) {
+    return res.status(500).json({ error: 'Internal error' });
+  }
+
+  const cleaned = raw.replace(/^```json\s*/i, '').replace(/```\s*$/, '').trim();
+  let parsed;
+  try {
+    parsed = JSON.parse(cleaned);
+  } catch {
+    return res.status(200).json({ answers: {} });
+  }
+  return res.status(200).json({ answers: parsed.answers ?? {} });
 }
 
 async function handleQuickfire(wiki, res) {

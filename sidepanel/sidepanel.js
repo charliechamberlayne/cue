@@ -38,20 +38,25 @@ function sendManualQuestion() {
 const DEFAULT_QUICKFIRE = ['Burn rate', 'Runway', 'Client count', 'Raise details', 'ARPU'];
 const quickfireRow = document.getElementById('quickfire-row');
 let activeQfBtn = null;
+let quickfireCacheReady = false;
 
-function renderQuickfireButtons(labels) {
+function renderQuickfireButtons(labels, cacheReady) {
   quickfireRow.innerHTML = '';
   labels.forEach(label => {
     const btn = document.createElement('button');
-    btn.className = 'qf-btn';
+    btn.className = 'qf-btn' + (cacheReady ? ' cached' : '');
     btn.textContent = label;
     btn.addEventListener('click', () => {
       if (btn.classList.contains('loading')) return;
-      // Set loading state
-      btn.classList.add('loading');
-      btn.textContent = label + '…';
-      activeQfBtn = { btn, label };
-      chrome.runtime.sendMessage({ type: 'MANUAL_QUESTION', query: label });
+      // Only show loading spinner if cache is not ready
+      if (!quickfireCacheReady) {
+        btn.classList.add('loading');
+        btn.textContent = label + '…';
+        activeQfBtn = { btn, label };
+      } else {
+        activeQfBtn = { btn, label };
+      }
+      chrome.runtime.sendMessage({ type: 'QUICKFIRE_CLICK', label });
     });
     quickfireRow.appendChild(btn);
   });
@@ -64,13 +69,17 @@ function clearQfLoading() {
   activeQfBtn = null;
 }
 
-// Load from storage, fall back to defaults
-chrome.storage.sync.get(['quickFireButtons'], (data) => {
-  const labels = Array.isArray(data.quickFireButtons) && data.quickFireButtons.length
-    ? data.quickFireButtons
-    : DEFAULT_QUICKFIRE;
-  renderQuickfireButtons(labels);
-});
+// Load from local (wiki-derived) or sync (user-set), fall back to defaults
+function loadQuickfireButtons() {
+  chrome.storage.local.get(['quickfireButtons', 'quickfireCache'], (local) => {
+    const labels = Array.isArray(local.quickfireButtons) && local.quickfireButtons.length
+      ? local.quickfireButtons
+      : DEFAULT_QUICKFIRE;
+    quickfireCacheReady = !!(local.quickfireCache && Object.keys(local.quickfireCache).length > 0);
+    renderQuickfireButtons(labels, quickfireCacheReady);
+  });
+}
+loadQuickfireButtons();
 
 // ── Card rendering ────────────────────────────────────────────────────────
 const cardsZone   = document.getElementById('zone-cards');
@@ -161,6 +170,16 @@ chrome.runtime.onMessage.addListener((message) => {
     case 'CARDS_ERROR':
       clearQfLoading();
       setStatus(`Error: ${message.error}`);
+      break;
+    case 'QUICKFIRE_BUTTONS':
+      // New wiki-derived buttons just arrived — re-render without cache dot yet
+      quickfireCacheReady = false;
+      renderQuickfireButtons(message.buttons, false);
+      break;
+    case 'QUICKFIRE_CACHE_READY':
+      // Answers pre-warmed — mark buttons as instant
+      quickfireCacheReady = true;
+      loadQuickfireButtons();
       break;
   }
 });

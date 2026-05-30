@@ -1,10 +1,11 @@
 // options.js — load/save all settings via chrome.storage.sync
 
-const KEYS = ['userName', 'wikiUrl', 'debounceMs'];
+const KEYS = ['userName', 'wikiUrl', 'wiki', 'debounceMs'];
 
 const els = {
-  userName:  document.getElementById('user-name'),
-  wikiUrl:   document.getElementById('wiki-url'),
+  userName:   document.getElementById('user-name'),
+  wikiUrl:    document.getElementById('wiki-url'),
+  wiki:       document.getElementById('wiki'),
   debounceMs: document.getElementById('debounce-ms'),
 };
 

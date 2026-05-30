@@ -26,9 +26,75 @@ async function fetchWikiUrl() {
       { wikiUrlContent: text, wikiFetchedAt: Date.now() }, resolve
     ));
     console.log('[Cue SW] wiki refreshed from URL, length:', text.length);
+    // Pre-warm quickfire answers in the background
+    prewarmQuickfireAnswers(text);
   } catch (err) {
     console.warn('[Cue SW] wiki URL fetch failed:', err.message);
     broadcast({ type: 'WIKI_FETCH_ERROR', error: err.message });
+  }
+}
+
+async function prewarmQuickfireAnswers(wikiContent) {
+  try {
+    // First get the button labels (from storage or fetch them from the proxy)
+    const local = await chromeStorageLocalGet(['quickfireButtons']);
+    let buttons = local.quickfireButtons;
+
+    if (!buttons || !buttons.length) {
+      // No cached buttons yet — fetch them first
+      const settings = await chromeStorageGet(['proxyUrl', 'userName', 'defaultContext', 'wiki']);
+      const proxyUrl = settings.proxyUrl || DEFAULT_PROXY_URL;
+      const res = await fetch(proxyUrl, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ mode: 'quickfire', wiki: wikiContent }),
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      buttons = data.buttons ?? [];
+      if (!buttons.length) return;
+      await new Promise(resolve => chrome.storage.local.set({ quickfireButtons: buttons }, resolve));
+      broadcast({ type: 'QUICKFIRE_BUTTONS', buttons });
+    }
+
+    // Now pre-generate answers for all buttons in one proxy call
+    const settings = await chromeStorageGet(['proxyUrl', 'userName', 'defaultContext']);
+    const proxyUrl = settings.proxyUrl || DEFAULT_PROXY_URL;
+    const context  = settings.defaultContext || '';
+    const userName = settings.userName || 'the user';
+
+    const res = await fetch(proxyUrl, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({
+        mode:    'quickfire-answers',
+        wiki:    wikiContent,
+        buttons,
+        context,
+        userName,
+      }),
+    });
+    if (!res.ok) return;
+    const data = await res.json();
+    const answerMap = data.answers ?? {};
+
+    // Cache as { label: cards[] } — each value is an array for compatibility with renderCards
+    const quickfireCache = {};
+    for (const [label, card] of Object.entries(answerMap)) {
+      if (card && card.answer) {
+        quickfireCache[label] = [{
+          id:       `qf-${label}`,
+          label:    card.label || label,
+          sublabel: card.sublabel || '',
+          answer:   card.answer,
+        }];
+      }
+    }
+    await new Promise(resolve => chrome.storage.local.set({ quickfireCache }, resolve));
+    console.log('[Cue SW] quickfire cache pre-warmed for', Object.keys(quickfireCache).length, 'buttons');
+    broadcast({ type: 'QUICKFIRE_CACHE_READY' });
+  } catch (err) {
+    console.warn('[Cue SW] quickfire prewarm failed:', err.message);
   }
 }
 
@@ -55,6 +121,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     const query = message.query.trim();
     const isQuestion = query.endsWith('?') || /^(what|how|when|who|why|where|can|is|are|do|does)\b/i.test(query);
     handleManualQuestion({ query: isQuestion ? query : `What can you tell me about ${query}?` });
+    sendResponse({ ok: true });
+    return false;
+  }
+  if (message.type === 'QUICKFIRE_CLICK') {
+    handleQuickfireClick(message.label);
     sendResponse({ ok: true });
     return false;
   }
@@ -122,6 +193,30 @@ async function triggerSuggest(buffer) {
     broadcast({ type: 'CARDS_RESULT', cards, source: 'listen' });
   } catch (err) {
     console.error('[Cue SW] suggest error:', err);
+    broadcast({ type: 'CARDS_ERROR', error: err.message });
+  }
+}
+
+// ── Quickfire click — cache-first, AI fallback ───────────────────────────
+async function handleQuickfireClick(label) {
+  const local = await chromeStorageLocalGet(['quickfireCache']);
+  const cache = local.quickfireCache ?? {};
+  if (cache[label] && cache[label].length) {
+    // Cache hit — instant render, no AI call
+    broadcast({ type: 'CARDS_RESULT', cards: cache[label], source: 'manual' });
+    return;
+  }
+  // Cache miss — fall back to live AI call
+  broadcast({ type: 'CARDS_LOADING' });
+  const query = `What can you tell me about ${label}?`;
+  try {
+    const settings = await chromeStorageGet(['userName', 'proxyUrl', 'defaultContext', 'wiki', 'apiKey']);
+    const localData = await chromeStorageLocalGet(['callContext', 'wikiUrlContent']);
+    const context   = localData.callContext || settings.defaultContext || '';
+    const wiki      = await resolveWiki(settings, localData);
+    const cards     = await callProxy({ mode: 'manual', context, wiki, query, userName: settings.userName || 'the user', proxyUrl: settings.proxyUrl || '', apiKey: settings.apiKey || '' });
+    broadcast({ type: 'CARDS_RESULT', cards, source: 'manual' });
+  } catch (err) {
     broadcast({ type: 'CARDS_ERROR', error: err.message });
   }
 }
